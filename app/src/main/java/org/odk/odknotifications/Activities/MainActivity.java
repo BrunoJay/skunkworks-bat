@@ -29,6 +29,7 @@ import androidx.fragment.app.FragmentTransaction;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
@@ -83,7 +84,7 @@ import java.util.Map;
 
 
 public class MainActivity extends AppCompatActivity
-        implements NavigationView.OnNavigationItemSelectedListener, DatabaseConnectionListener, SortingOptionListener, FilterNotificationListener{
+        implements NavigationView.OnNavigationItemSelectedListener, DatabaseConnectionListener, SortingOptionListener, FilterNotificationListener, SwipeRefreshLayout.OnRefreshListener{
 
     private static final String SORTED_ORDER = "sorted_order";
     private static final String FILTERED_GRP = "filtered_grp";
@@ -106,6 +107,7 @@ public class MainActivity extends AppCompatActivity
     private String sortedOrder;
     private MenuItem syncitem;
     private ArrayList<Notification> notificationArrayList;
+    SwipeRefreshLayout mSwipeRefreshLayout;
 
     RecyclerView recyclerView;
     TextView noDataTextView;
@@ -184,7 +186,32 @@ public class MainActivity extends AppCompatActivity
             }
         });
 
+        // SwipeRefreshLayout
+        mSwipeRefreshLayout = (SwipeRefreshLayout) findViewById(R.id.swipe_container);
+        mSwipeRefreshLayout.setOnRefreshListener(this);
+        mSwipeRefreshLayout.setColorSchemeResources(R.color.colorPrimary,
+                android.R.color.holo_green_dark,
+                android.R.color.holo_orange_dark,
+                android.R.color.holo_blue_dark);
+
+        /**
+         * Showing Swipe Refresh animation on activity create
+         * As animation won't start on onCreate, post runnable is used
+         */
+        mSwipeRefreshLayout.post(new Runnable() {
+
+            @Override
+            public void run() {
+
+                mSwipeRefreshLayout.setRefreshing(true);
+
+                // Fetching data from server
+                addNotifications();
+            }
+        });
+
         addNotifications();
+
     }
 
     @Override
@@ -204,6 +231,18 @@ public class MainActivity extends AppCompatActivity
         sort(sortedOrder);
         filterByGroup(filteredGrp);
     }
+
+    /**
+     * This method is called when swipe refresh is pulled down
+     */
+    @Override
+    public void onRefresh() {
+
+        // Fetching data from server
+        addNotifications();
+    }
+
+
 
     public String loadJSONFromAsset() {
         String json = null;
@@ -261,6 +300,8 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void addNotifications(){
+        // Showing refresh animation before making http call
+        mSwipeRefreshLayout.setRefreshing(true);
 
         notificationArrayList = dbHandler.getAllNotificationsWithResponses();
         notificationAdapter = new NotificationAdapter(notificationArrayList, this);
@@ -285,6 +326,8 @@ public class MainActivity extends AppCompatActivity
         });
 
         updateUIVisibility();
+        // Stopping swipe refresh
+        mSwipeRefreshLayout.setRefreshing(false);
     }
 
     private void updateUIVisibility() {
